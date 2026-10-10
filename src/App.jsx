@@ -20,7 +20,7 @@ import EditArtwork from "./pages/EditArtwork";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import MyCommisions from "./pages/MyCommisions";
-import Orders from "./pages/orders";
+import Orders from "./pages/Orders";
 import ArtistOrders from "./pages/ArtistOrder";
 
 import AdminDashboard from "./pages/AdminDashboard";
