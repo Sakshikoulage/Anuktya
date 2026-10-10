@@ -10,7 +10,7 @@ const navItems = [
   { label: "Artworks", to: "/admin/artworks" },
   { label: "Orders", to: "/admin/orders" },
   { label: "Commissions", to: "/admin/commissions", active: true },
-  { label: "Categories", to: "/admin/categories" },
+  
 ];
 
 function Sidebar() {

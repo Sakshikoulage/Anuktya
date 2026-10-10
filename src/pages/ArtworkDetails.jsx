@@ -27,8 +27,8 @@ function ArtworkDetails() {
 
     const imageUrl = primaryImage
         ? supabase.storage
-              .from("artwork-images")
-              .getPublicUrl(primaryImage.storage_path).data.publicUrl
+            .from("artwork-images")
+            .getPublicUrl(primaryImage.storage_path).data.publicUrl
         : null;
 
     useEffect(() => {
@@ -159,6 +159,7 @@ function ArtworkDetails() {
         }
 
         setError("");
+        window.dispatchEvent(new Event("cartUpdated"));
         alert("Artwork added to your cart.");
     };
 
@@ -560,11 +561,10 @@ function ArtworkDetails() {
                             {/* FAVOURITE */}
                             <button
                                 onClick={toggleFavourite}
-                                className={`mt-6 w-full rounded-full border px-6 py-3 text-sm font-semibold transition ${
-                                    isFavourite
+                                className={`mt-6 w-full rounded-full border px-6 py-3 text-sm font-semibold transition ${isFavourite
                                         ? "border-[#8f5bb7]/50 bg-[#8f5bb7]/15 text-[#d8b8ed]"
                                         : "border-white/10 bg-white/[0.03] text-white/60 hover:border-[#8f5bb7]/40 hover:bg-[#8f5bb7]/10 hover:text-white"
-                                }`}
+                                    }`}
                             >
                                 {isFavourite
                                     ? "♥ Remove from favourites"

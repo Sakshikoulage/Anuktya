@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 
 function Navbar() {
   const navigate = useNavigate();
+  const [cartCount, setCartCount] = useState(0);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [role, setRole] = useState(null);
@@ -53,6 +54,46 @@ function Navbar() {
       subscription.unsubscribe();
     };
   }, []);
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchCartCount = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        if (mounted) setCartCount(0);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("cart_items")
+        .select("quantity")
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Cart count error:", error);
+        return;
+      }
+
+      const count = (data || []).reduce(
+        (total, item) => total + (Number(item.quantity) || 0),
+        0
+      );
+
+      if (mounted) setCartCount(count);
+    };
+
+    fetchCartCount();
+
+    window.addEventListener("cartUpdated", fetchCartCount);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener("cartUpdated", fetchCartCount);
+    };
+  }, []);
 
   const handleLogout = async () => {
     setMenuOpen(false);
@@ -65,8 +106,8 @@ function Navbar() {
     role === "admin"
       ? "/admin"
       : role === "artist"
-      ? "/artist/dashboard"
-      : null;
+        ? "/artist/dashboard"
+        : null;
 
   const dashboardLabel =
     role === "admin" ? "Admin Dashboard" : "Artist Dashboard";
@@ -215,10 +256,16 @@ function Navbar() {
           <button
             type="button"
             onClick={() => navigate("/cart")}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-lg text-white transition-all duration-300 hover:border-[#b58bd0] hover:bg-[#8f5bb7]/15"
-            aria-label="Cart"
+            className="relative flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-lg text-white transition-all duration-300 hover:border-[#b58bd0] hover:bg-[#8f5bb7]/15"
+            aria-label={`Cart${cartCount > 0 ? `, ${cartCount} items` : ""}`}
           >
             🛒
+
+            {cartCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#cba6e8] px-1 text-[10px] font-bold leading-none text-black">
+                {cartCount > 99 ? "99+" : cartCount}
+              </span>
+            )}
           </button>
         </div>
       </nav>

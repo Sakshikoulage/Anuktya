@@ -412,15 +412,7 @@ function Favourites() {
                                 Artists
                             </button>
 
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    navigate("/collections")
-                                }
-                                className="text-sm font-semibold text-white/75 transition hover:text-white"
-                            >
-                                Collections
-                            </button>
+                            
 
                             <button
                                 type="button"

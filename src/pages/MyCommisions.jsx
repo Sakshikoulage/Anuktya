@@ -75,7 +75,11 @@ function MyCommisions() {
             agreed_price,
             status,
             payment_status,
-            created_at
+            created_at,
+            tracking_number,
+shipping_carrier,
+shipped_at,
+completed_at
           `)
           .in("commission_request_id", requestIds);
 
@@ -203,7 +207,7 @@ function MyCommisions() {
             if (!verificationData?.success) {
               throw new Error(
                 verificationData?.error ||
-                  "Payment verification failed."
+                "Payment verification failed."
               );
             }
 
@@ -212,15 +216,15 @@ function MyCommisions() {
               current.map((item) =>
                 item.id === order.commission_request_id
                   ? {
-                      ...item,
-                      commission_order: {
-                        ...item.commission_order,
-                        status: "IN_PROGRESS",
-                        payment_status: "PAID",
-                        razorpay_payment_id:
-                          response.razorpay_payment_id,
-                      },
-                    }
+                    ...item,
+                    commission_order: {
+                      ...item.commission_order,
+                      status: "IN_PROGRESS",
+                      payment_status: "PAID",
+                      razorpay_payment_id:
+                        response.razorpay_payment_id,
+                    },
+                  }
                   : item
               )
             );
@@ -234,7 +238,7 @@ function MyCommisions() {
 
             setError(
               err.message ||
-                "Payment verification failed."
+              "Payment verification failed."
             );
 
             setActionLoading(null);
@@ -269,7 +273,7 @@ function MyCommisions() {
 
           setError(
             response.error?.description ||
-              "Payment failed. Please try again."
+            "Payment failed. Please try again."
           );
 
           setActionLoading(null);
@@ -363,9 +367,9 @@ function MyCommisions() {
         current.map((item) =>
           item.id === request.id
             ? {
-                ...item,
-                commission_order: order,
-              }
+              ...item,
+              commission_order: order,
+            }
             : item
         )
       );
@@ -402,9 +406,9 @@ function MyCommisions() {
         current.map((request) =>
           request.id === requestId
             ? {
-                ...request,
-                status: "CANCELLED",
-              }
+              ...request,
+              status: "CANCELLED",
+            }
             : request
         )
       );
@@ -416,8 +420,52 @@ function MyCommisions() {
 
       setError(
         err.message ||
-          "Could not cancel commission."
+        "Could not cancel commission."
       );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+  const confirmCommissionDelivery = async (order) => {
+    setActionLoading(order.id);
+    setError("");
+
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) throw authError;
+      if (!user) throw new Error("Please log in first.");
+
+      const { data, error: updateError } = await supabase
+        .from("commission_orders")
+        .update({
+          status: "COMPLETED",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", order.id)
+        .eq("buyer_id", user.id)
+        .eq("status", "SHIPPED")
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      setRequests((current) =>
+        current.map((request) =>
+          request.id === order.commission_request_id
+            ? {
+              ...request,
+              commission_order: data,
+            }
+            : request
+        )
+      );
+    } catch (err) {
+      console.error("Delivery confirmation error:", err);
+      setError(err.message || "Could not confirm delivery.");
     } finally {
       setActionLoading(null);
     }
@@ -788,10 +836,32 @@ function MyCommisions() {
                             {actionLoading === order.id
                               ? "Opening payment..."
                               : `Pay ₹${Number(
-                                  order.agreed_price
-                                ).toLocaleString("en-IN")}`}
+                                order.agreed_price
+                              ).toLocaleString("en-IN")}`}
                           </button>
                         )}
+                        
+  {/* CONFIRM DELIVERY */}
+  {offerAccepted && order.status === "SHIPPED" && (
+    <button
+      type="button"
+      disabled={actionLoading === order.id}
+      onClick={() => confirmCommissionDelivery(order)}
+      className="rounded-full bg-[#8f5bb7] px-5 py-4 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#a66dcc] disabled:opacity-50"
+    >
+      {actionLoading === order.id
+        ? "Confirming..."
+        : "Confirm Delivery"}
+    </button>
+  )}
+
+  {/* COMPLETED STATUS */}
+  {offerAccepted && order.status === "COMPLETED" && (
+    <div className="rounded-2xl border border-green-400/20 bg-green-500/[0.06] p-4 text-center text-sm text-green-300">
+      Commission completed
+    </div>
+  )}
+
 
                     </div>
                   </div>

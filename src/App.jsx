@@ -8,7 +8,7 @@ import Signup from "./components/Signup";
 import Home from "./pages/Home";
 import Explore from "./pages/Explore";
 import Artists from "./pages/Artists";
-import Collections from "./pages/Collections";
+
 import Favourites from "./pages/Favourites";
 import ArtworkDetails from "./pages/ArtworkDetails";
 import ArtistProfile from "./pages/ArtistProfile";
@@ -142,10 +142,7 @@ function App() {
 
           <Route path="/artists" element={<Artists />} />
 
-          <Route
-            path="/collections"
-            element={<Collections />}
-          />
+          
 
           <Route
             path="/artwork/:id"

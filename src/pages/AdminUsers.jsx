@@ -67,7 +67,7 @@ const AdminUsers = () => {
     { label: "Artworks", to: "/admin/artworks" },
     { label: "Orders", to: "/admin/orders" },
     { label: "Commissions", to: "/admin/commissions" },
-    { label: "Categories", to: "/admin/categories" },
+    
   ];
 
   return (

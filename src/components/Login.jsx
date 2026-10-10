@@ -31,10 +31,7 @@ export default function Login() {
     navigate("/");
   };
 
-  const continueAsGuest = () => {
-    navigate("/");
-  };
-
+  
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#151416]">
 
@@ -112,26 +109,7 @@ export default function Login() {
               <div className="w-full max-w-[350px]">
 
                 {/* Back */}
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="
-                    mb-7
-                    flex
-                    items-center
-                    gap-2
-                    text-xs
-                    text-[#68646a]
-                    transition
-                    hover:text-[#29272a]
-                  "
-                >
-                  <span className="text-sm">
-                    ←
-                  </span>
-
-                  Back
-                </button>
+                
 
 
                 {/* =================================================
@@ -442,26 +420,7 @@ export default function Login() {
                 {/* =================================================
                     GUEST BUTTON
                 ================================================== */}
-                <button
-                  type="button"
-                  onClick={continueAsGuest}
-                  className="
-                    h-[46px]
-                    w-full
-                    rounded-[12px]
-                    border
-                    border-[#d1ccc9]
-                    bg-transparent
-                    text-[11px]
-                    text-[#6f6a70]
-                    transition
-                    hover:border-[#aaa1af]
-                    hover:bg-[#e9e5e1]
-                    hover:text-[#302d31]
-                  "
-                >
-                  Continue without logging in
-                </button>
+                
 
 
                 {/* =================================================

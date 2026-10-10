@@ -126,6 +126,12 @@ export default function ArtistOrders() {
                 `)
                 .eq("artist_id", artistProfile.id)
                 .order("created_at", { ascending: false });
+                console.log("Artist profile:", artistProfile);
+console.log("Artist profile error:", artistError);
+console.log("Order items:", data);
+console.log("Order query error:", orderError);
+                console.log("Full order item:", JSON.stringify(data, null, 2));
+                
 
             if (orderError) throw orderError;
 

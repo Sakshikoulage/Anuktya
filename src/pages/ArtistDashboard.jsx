@@ -17,7 +17,9 @@ function ArtistDashboard() {
   const [agreedPrice, setAgreedPrice] = useState("");
 
   const [error, setError] = useState("");
-  
+ 
+  const [shippingLoading, setShippingLoading] = useState(false);
+
 
 
 
@@ -123,15 +125,73 @@ function ArtistDashboard() {
       current.map((request) =>
         request.id === requestId
           ? {
-              ...request,
-              status,
-            }
+            ...request,
+            status,
+          }
           : request
       )
     );
 
     setCommissionLoading(false);
   };
+
+  
+
+const markCommissionShipped = async (request) => {
+  const order = request.commission_order;
+
+  if (!order?.id) {
+    setError("Commission order not found.");
+    return;
+  }
+
+  setShippingLoading(true);
+  setError("");
+
+  try {
+    const { data, error } = await supabase
+      .from("commission_orders")
+      .update({
+        status: "SHIPPED",
+        shipped_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", order.id)
+      .eq("artist_id", artist.id)
+      .eq("payment_status", "PAID")
+      .eq("status", "IN_PROGRESS")
+      .select()
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!data) {
+      throw new Error(
+        "Order could not be updated. Check its status and database permissions."
+      );
+    }
+
+    setCommissionRequests((current) =>
+      current.map((item) =>
+        item.id === request.id
+          ? {
+              ...item,
+              commission_order: {
+                ...item.commission_order,
+                ...data,
+              },
+            }
+          : item
+      )
+    );
+  } catch (err) {
+    console.error("Mark commission shipped error:", err);
+    setError(err.message || "Could not update commission status.");
+  } finally {
+    setShippingLoading(false);
+  }
+};
+
 
   const saveCommissionPrice = async (requestId) => {
     const price = Number(agreedPrice);
@@ -164,10 +224,10 @@ function ArtistDashboard() {
       current.map((request) =>
         request.id === requestId
           ? {
-              ...request,
-              agreed_price: price,
-              status: "ACCEPTED",
-            }
+            ...request,
+            agreed_price: price,
+            status: "ACCEPTED",
+          }
           : request
       )
     );
@@ -274,13 +334,56 @@ function ArtistDashboard() {
         .order("created_at", { ascending: false });
 
       if (commissionError) {
-        console.error(
-          "Commission requests error:",
-          commissionError
-        );
+        console.error("Commission requests error:", commissionError);
       } else {
-        setCommissionRequests(commissionData || []);
+        // Fetch commission orders associated with these requests
+        const requestIds = (commissionData || []).map(
+          (request) => request.id
+        );
+
+        let orderData = [];
+
+        if (requestIds.length > 0) {
+          const {
+            data,
+            error: orderError,
+          } = await supabase
+            .from("commission_orders")
+            .select(`
+              id,
+              commission_request_id,
+              status,
+              payment_status,
+              agreed_price,
+              created_at,
+              
+shipped_at,
+completed_at
+            `)
+            .in("commission_request_id", requestIds);
+
+          if (orderError) {
+            console.error("Commission orders error:", orderError);
+            setError(orderError.message);
+          } else {
+            orderData = data || [];
+          }
+        }
+
+        const requestsWithOrders = (commissionData || []).map(
+          (request) => ({
+            ...request,
+            commission_order:
+              orderData.find(
+                (order) =>
+                  order.commission_request_id === request.id
+              ) || null,
+          })
+        );
+
+        setCommissionRequests(requestsWithOrders);
       }
+
 
       setLoading(false);
     };
@@ -578,11 +681,59 @@ function ArtistDashboard() {
                           </p>
 
                           <p className="mt-1 text-sm text-white/40">
-                            Waiting for client confirmation.
+                            {request.commission_order?.payment_status?.toUpperCase() === "PAID"
+                              ? "Payment received — commission in progress."
+                              : request.commission_order?.status?.toUpperCase() === "AWAITING_PAYMENT"
+                                ? "Client accepted your offer — awaiting payment."
+                                : request.agreed_price
+                                  ? "Offer sent — awaiting client action."
+                                  : "Waiting for your response."}
                           </p>
                         </div>
                       )}
-                    </div>
+                      
+{request.commission_order?.payment_status?.toUpperCase() === "PAID" && (
+  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+    <p className="text-xs font-semibold uppercase tracking-widest text-purple-300">
+      Fulfillment Status
+    </p>
+
+    
+<p className="mt-2 text-sm font-semibold text-white">
+  {{
+    IN_PROGRESS: "In Progress",
+    SHIPPED: "Shipped",
+    COMPLETED: "Completed",
+  }[request.commission_order.status?.toUpperCase()] ||
+    request.commission_order.status}
+</p>
+
+{request.commission_order.status?.toUpperCase() === "IN_PROGRESS" && (
+  <button
+    type="button"
+    onClick={() => markCommissionShipped(request)}
+    disabled={shippingLoading}
+    className="mt-4 w-full rounded-full bg-[#8f5bb7] px-4 py-3 text-xs font-semibold uppercase tracking-widest text-white hover:bg-[#a66dcc] disabled:opacity-50"
+  >
+    {shippingLoading ? "Updating..." : "Mark as Shipped"}
+  </button>
+)}
+
+{request.commission_order.status?.toUpperCase() === "SHIPPED" && (
+  <p className="mt-3 text-sm text-white/50">
+    Waiting for the customer to confirm delivery.
+  </p>
+)}
+
+{request.commission_order.status?.toUpperCase() === "COMPLETED" && (
+  <p className="mt-3 text-sm text-emerald-300">
+    Customer confirmed delivery.
+  </p>
+)}
+</div>
+)}
+</div>
+
 
                     {/* ACTIONS */}
                     <div className="flex flex-wrap gap-3 lg:w-48 lg:flex-col">
@@ -643,13 +794,25 @@ function ArtistDashboard() {
 
                       {request.status === "ACCEPTED" &&
                         request.agreed_price && (
-                          <div className="rounded-2xl border border-[#b58bd0]/20 bg-[#8f5bb7]/10 p-4 text-center">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#c7a8dc]">
-                              Offer sent
+                          <div>
+                            <p>
+                              {request.commission_order?.payment_status?.toUpperCase() === "PAID"
+                                ? "PAYMENT RECEIVED"
+                                : request.commission_order?.status?.toUpperCase() === "AWAITING_PAYMENT"
+                                  ? "AWAITING PAYMENT"
+                                  : request.agreed_price
+                                    ? "OFFER SENT"
+                                    : "REQUEST RECEIVED"}
                             </p>
 
-                            <p className="mt-2 text-xs text-white/40">
-                              Waiting for client.
+                            <p>
+                              {request.commission_order?.payment_status?.toUpperCase() === "PAID"
+                                ? "Commission in progress."
+                                : request.commission_order?.status?.toUpperCase() === "AWAITING_PAYMENT"
+                                  ? "Client accepted. Waiting for payment."
+                                  : request.agreed_price
+                                    ? "Waiting for client."
+                                    : "Review this request."}
                             </p>
                           </div>
                         )}
@@ -662,24 +825,27 @@ function ArtistDashboard() {
         </section>
         
 
-{/* Sales Orders Card */}
-<section className="mt-10">
-  <div className="mb-5">
-    <p className="text-xs uppercase tracking-[0.2em] text-[#b58bd0]">
-      Orders & Fulfillment
-    </p>
-    <h2 className="mt-2 font-serif text-3xl text-white">
-      Sales Orders
-    </h2>
-    <p className="mt-2 text-sm text-white/50">
-      Manage purchases containing your artworks.
-    </p>
-  </div>
 
-  <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#09070b] p-4 sm:p-6">
-    <ArtistOrder />
-  </div>
-</section>
+
+
+        {/* Sales Orders Card */}
+        <section className="mt-10">
+          <div className="mb-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-[#b58bd0]">
+              Orders & Fulfillment
+            </p>
+            <h2 className="mt-2 font-serif text-3xl text-white">
+              Sales Orders
+            </h2>
+            <p className="mt-2 text-sm text-white/50">
+              Manage purchases containing your artworks.
+            </p>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#09070b] p-4 sm:p-6">
+            <ArtistOrder />
+          </div>
+        </section>
 
 
 
@@ -737,10 +903,10 @@ function ArtistDashboard() {
 
                 const imageUrl = primaryImage
                   ? supabase.storage
-                      .from("artwork-images")
-                      .getPublicUrl(
-                        primaryImage.storage_path
-                      ).data.publicUrl
+                    .from("artwork-images")
+                    .getPublicUrl(
+                      primaryImage.storage_path
+                    ).data.publicUrl
                   : null;
 
                 return (
